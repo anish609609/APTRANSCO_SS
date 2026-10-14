@@ -1,14 +1,15 @@
 /**
  * SAT-TWIN: Interactive Vector Single-Line Diagram (SLD)
+ * Mobile & Touch Optimized
  * Conforms to IEC 60617 / IEEE standard electrical substation symbology.
  * Displays 400 kV and 220 kV busbars, bays, circuit breakers, isolators,
  * power transformers, and bus reactor with live telemetry overlays.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TelemetryState } from '../services/telemetryEngine';
 import { SubstationAsset } from '../types/substation';
-import { ZoomIn, ZoomOut, RotateCcw, Info } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Info, Move } from 'lucide-react';
 
 interface SLDProps {
   telemetry: TelemetryState;
@@ -26,99 +27,239 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Touch tracking state for mobile pinch-to-zoom & pan
+  const touchState = useRef({
+    isTracking: false,
+    isPinching: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    startTime: 0,
+    initialDistance: 0,
+    initialZoom: 1,
+    initialPan: { x: 0, y: 0 },
+  });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    hasMovedRef.current = false;
+    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    const newX = e.clientX - dragStart.current.x;
+    const newY = e.clientY - dragStart.current.y;
+    if (Math.hypot(newX - pan.x, newY - pan.y) > 4) {
+      hasMovedRef.current = true;
+    }
+    setPan({ x: newX, y: newY });
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setTimeout(() => {
+      hasMovedRef.current = false;
+    }, 50);
+  };
+
+  // Mobile Touch Gestures: Pan & Pinch-to-Zoom
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const ts = touchState.current;
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      ts.isTracking = true;
+      ts.isPinching = false;
+      ts.startX = t.clientX;
+      ts.startY = t.clientY;
+      ts.lastX = t.clientX;
+      ts.lastY = t.clientY;
+      ts.startTime = Date.now();
+      ts.initialPan = { ...pan };
+      hasMovedRef.current = false;
+    } else if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      ts.isTracking = false;
+      ts.isPinching = true;
+      ts.initialDistance = dist;
+      ts.initialZoom = zoom;
+      ts.initialPan = { ...pan };
+      ts.lastX = (t1.clientX + t2.clientX) / 2;
+      ts.lastY = (t1.clientY + t2.clientY) / 2;
+      hasMovedRef.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const ts = touchState.current;
+    if (!ts.isTracking && !ts.isPinching) return;
+
+    if (e.touches.length === 1 && ts.isTracking) {
+      const t = e.touches[0];
+      const dx = t.clientX - ts.lastX;
+      const dy = t.clientY - ts.lastY;
+      const totalMoved = Math.hypot(t.clientX - ts.startX, t.clientY - ts.startY);
+
+      if (totalMoved > 6) {
+        hasMovedRef.current = true;
+      }
+
+      ts.lastX = t.clientX;
+      ts.lastY = t.clientY;
+
+      setPan((prev) => ({
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }));
+    } else if (e.touches.length === 2 && ts.isPinching) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      hasMovedRef.current = true;
+
+      // Update zoom
+      if (ts.initialDistance > 0 && currentDist > 0) {
+        const factor = currentDist / ts.initialDistance;
+        const newZoom = Math.max(0.5, Math.min(2.5, ts.initialZoom * factor));
+        setZoom(newZoom);
+      }
+
+      // Update pan with 2 fingers
+      const panDx = midX - ts.lastX;
+      const panDy = midY - ts.lastY;
+      ts.lastX = midX;
+      ts.lastY = midY;
+
+      setPan((prev) => ({
+        x: prev.x + panDx,
+        y: prev.y + panDy,
+      }));
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      touchState.current.isTracking = false;
+      touchState.current.isPinching = false;
+      setTimeout(() => {
+        hasMovedRef.current = false;
+      }, 80);
+    } else if (e.touches.length === 1) {
+      // Switched from pinch to 1 finger
+      const t = e.touches[0];
+      touchState.current.isTracking = true;
+      touchState.current.isPinching = false;
+      touchState.current.lastX = t.clientX;
+      touchState.current.lastY = t.clientY;
+    }
+  };
+
+  const handleAssetClick = (assetId: string) => {
+    if (hasMovedRef.current) return;
+    onSelectAsset(assetId);
+  };
 
   // Helper colors
-  const COLOR_400KV = '#f97316'; // Orange / Red for 400 kV
+  const COLOR_400KV = '#f97316'; // Orange for 400 kV
   const COLOR_220KV = '#06b6d4'; // Cyan for 220 kV
   const COLOR_33KV = '#a855f7';  // Purple for 33 kV tertiary
   const COLOR_DEENERGIZED = '#64748b';
 
   const getCbColor = (state: string) => {
-    // In utility electrical practice: RED = CLOSED (Energized/Live), GREEN = OPEN (Isolated/Safe)
-    if (state === 'CLOSED') return '#ef4444'; // Red = Closed
-    if (state === 'OPEN') return '#10b981'; // Green = Open
-    return '#eab308'; // Amber = Intermediate/Unknown
+    // Utility electrical convention: RED = CLOSED (Energized/Live), GREEN = OPEN (Isolated/Safe)
+    if (state === 'CLOSED') return '#ef4444';
+    if (state === 'OPEN') return '#10b981';
+    return '#eab308';
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-100 select-none overflow-hidden relative">
+    <div className="flex flex-col h-full bg-slate-950 text-slate-100 select-none overflow-hidden relative" style={{ touchAction: 'none' }}>
       {/* Top SLD Legend & Tooling */}
-      <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-4 z-10 text-xs">
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-slate-200">Interactive Single-Line Diagram (SLD)</span>
-          <div className="flex items-center gap-3 font-mono text-[11px]">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-1 bg-[#f97316] rounded-sm"></span> 400 kV Bus
+      <div className="bg-slate-900/95 border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sm:gap-4 z-10 text-xs shadow-md">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <span className="font-semibold text-slate-200 text-xs sm:text-sm">Single-Line Diagram (SLD)</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 font-mono text-[10px] sm:text-[11px] overflow-x-auto py-0.5">
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="w-2.5 sm:w-3 h-1 bg-[#f97316] rounded-sm"></span> 400 kV Bus
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-1 bg-[#06b6d4] rounded-sm"></span> 220 kV Bus
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="w-2.5 sm:w-3 h-1 bg-[#06b6d4] rounded-sm"></span> 220 kV Bus
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-[#ef4444] border border-white/40"></span> CB Closed
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 bg-[#ef4444] border border-white/40"></span> Closed
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-[#10b981] border border-white/40"></span> CB Open
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 bg-[#10b981] border border-white/40"></span> Open
             </span>
           </div>
         </div>
 
-        {/* Zoom & Pan Controls */}
-        <div className="flex items-center gap-2">
+        {/* Zoom & Pan Controls (Min 44x44px touch targets on mobile) */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
-            onClick={() => setZoom((z) => Math.min(z + 0.15, 2.0))}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+            onClick={() => setZoom((z) => Math.min(z + 0.2, 2.5))}
+            className="min-h-[44px] min-w-[44px] p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-slate-200 flex items-center justify-center transition-colors"
             title="Zoom In"
+            aria-label="Zoom in single line diagram"
           >
-            <ZoomIn className="w-3.5 h-3.5" />
+            <ZoomIn className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setZoom((z) => Math.max(z - 0.15, 0.6))}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+            onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))}
+            className="min-h-[44px] min-w-[44px] p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-slate-200 flex items-center justify-center transition-colors"
             title="Zoom Out"
+            aria-label="Zoom out single line diagram"
           >
-            <ZoomOut className="w-3.5 h-3.5" />
+            <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={() => {
               setZoom(1);
               setPan({ x: 0, y: 0 });
             }}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+            className="min-h-[44px] min-w-[44px] p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-slate-200 flex items-center justify-center transition-colors"
             title="Reset View"
+            aria-label="Reset single line diagram view"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
-          <span className="text-[11px] font-mono text-slate-400">Scale {Math.round(zoom * 100)}%</span>
+          <span className="text-[11px] font-mono text-cyan-400 bg-slate-950 px-2 py-1 rounded border border-slate-800 shrink-0">
+            {Math.round(zoom * 100)}%
+          </span>
         </div>
       </div>
 
-      {/* Main SVG Canvas */}
+      {/* Main SVG Canvas with touch & mouse pan/zoom */}
       <div
+        ref={containerRef}
         className="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing overflow-hidden bg-radial from-slate-900 to-slate-950"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{ touchAction: 'none' }}
       >
         <svg
           viewBox="0 0 1200 600"
           className="w-full h-full origin-center"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+            transition: isDragging ? 'none' : 'transform 0.12s ease-out',
+            touchAction: 'none',
           }}
         >
           <defs>
@@ -142,11 +283,13 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
             400 kV MAIN SWITCHYARD (NOMINAL 400 kV)
           </text>
 
-          {/* 400 kV Bus 1 */}
+          {/* 400 kV Bus 1 with generous touch hit-line */}
           <g
             className="cursor-pointer group"
-            onClick={() => onSelectAsset('BUS-400-1')}
+            onClick={() => handleAssetClick('BUS-400-1')}
           >
+            {/* Invisible large touch target line */}
+            <line x1="70" y1="85" x2="1140" y2="85" stroke="transparent" strokeWidth="32" pointerEvents="stroke" />
             <line
               x1="70"
               y1="85"
@@ -161,11 +304,13 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
             </text>
           </g>
 
-          {/* 400 kV Bus 2 */}
+          {/* 400 kV Bus 2 with generous touch hit-line */}
           <g
             className="cursor-pointer group"
-            onClick={() => onSelectAsset('BUS-400-2')}
+            onClick={() => handleAssetClick('BUS-400-2')}
           >
+            {/* Invisible large touch target line */}
+            <line x1="70" y1="120" x2="1140" y2="120" stroke="transparent" strokeWidth="32" pointerEvents="stroke" />
             <line
               x1="70"
               y1="120"
@@ -181,18 +326,20 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           </g>
 
           {/* 400 kV Bus Coupler Bay 407 */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-407')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-407')}>
+            {/* Touch target padding */}
+            <rect x="1080" y="80" width="50" height="50" fill="transparent" pointerEvents="all" />
             <line x1="1100" y1="85" x2="1100" y2="120" stroke={COLOR_400KV} strokeWidth="2.5" />
             <rect
               x="1092"
               y="97"
-              width="16"
-              height="16"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-407']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-407' ? '2.5' : '1.5'}
             />
-            <text x="1100" y="109" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
+            <text x="1101" y="109" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
               BC
             </text>
             <text x="1115" y="108" fill="#cbd5e1" fontSize="9" fontFamily="monospace">
@@ -203,18 +350,20 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           {/* 125 MVAR Bus Reactor RE-401 */}
           <g
             className="cursor-pointer group"
-            onClick={() => onSelectAsset('RE-401')}
+            onClick={() => handleAssetClick('RE-401')}
           >
+            {/* Generous touch target */}
+            <rect x="110" y="80" width="60" height="180" fill="transparent" pointerEvents="all" />
             <line x1="140" y1="85" x2="140" y2="170" stroke={COLOR_400KV} strokeWidth="2.5" />
             {/* Reactor Breaker CB-406 */}
             <rect
-              x="132"
+              x="131"
               y="110"
-              width="16"
-              height="16"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-406']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'RE-401' || selectedAssetId === 'CB-406' ? '2.5' : '1.5'}
             />
             {/* Reactor Coil Inductor Symbol */}
             <circle cx="140" cy="180" r="10" fill="none" stroke="#f97316" strokeWidth="2" />
@@ -234,16 +383,17 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
 
           {/* 400 kV Outgoing Feeders */}
           {/* Feeder 1: VTPS Line (Bay 404) */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-404')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-404')}>
+            <rect x="850" y="10" width="60" height="80" fill="transparent" pointerEvents="all" />
             <line x1="880" y1="85" x2="880" y2="30" stroke={COLOR_400KV} strokeWidth="2.5" />
             <rect
-              x="872"
-              y="45"
-              width="16"
-              height="16"
+              x="871"
+              y="44"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-404']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-404' ? '2.5' : '1.5'}
             />
             {/* Outgoing Arrow */}
             <polygon points="880,18 875,30 885,30" fill="#f97316" />
@@ -256,16 +406,17 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           </g>
 
           {/* Feeder 2: Tallapalli Line (Bay 405) */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-405')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-405')}>
+            <rect x="970" y="10" width="60" height="80" fill="transparent" pointerEvents="all" />
             <line x1="1000" y1="85" x2="1000" y2="30" stroke={COLOR_400KV} strokeWidth="2.5" />
             <rect
-              x="992"
-              y="45"
-              width="16"
-              height="16"
+              x="991"
+              y="44"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-405']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-405' ? '2.5' : '1.5'}
             />
             {/* Outgoing Arrow */}
             <polygon points="1000,18 995,30 1005,30" fill="#f97316" />
@@ -303,12 +454,20 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
                   strokeWidth="2.5"
                 />
 
-                {/* Isolator DS-401A / DS-402A etc */}
+                {/* Isolator DS */}
                 <circle cx={ict.x} cy="140" r="3" fill="#cbd5e1" />
                 <line x1={ict.x - 4} y1="137" x2={ict.x + 6} y2="143" stroke="#cbd5e1" strokeWidth="2" />
 
-                {/* 400 kV Breaker */}
-                <g className="cursor-pointer" onClick={() => onSelectAsset(ict.cbHv)}>
+                {/* 400 kV Breaker with generous touch hit-box */}
+                <g className="cursor-pointer" onClick={() => handleAssetClick(ict.cbHv)}>
+                  <rect
+                    x={ict.x - 22}
+                    y="152"
+                    width="44"
+                    height="44"
+                    fill="transparent"
+                    pointerEvents="all"
+                  />
                   <rect
                     x={ict.x - 9}
                     y="165"
@@ -342,8 +501,18 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
                 {/* Transformer 2-Winding / Auto-transformer Symbology */}
                 <g
                   className="cursor-pointer group"
-                  onClick={() => onSelectAsset(ict.id)}
+                  onClick={() => handleAssetClick(ict.id)}
                 >
+                  {/* Invisible expanded touch hit target around entire transformer */}
+                  <rect
+                    x={ict.x - 75}
+                    y="240"
+                    width="150"
+                    height="125"
+                    fill="transparent"
+                    pointerEvents="all"
+                  />
+
                   {/* Selection Highlight Ring */}
                   {isSelected && (
                     <circle cx={ict.x} cy="275" r="36" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" strokeWidth="2" />
@@ -422,8 +591,16 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
                   strokeWidth="2.5"
                 />
 
-                {/* 220 kV Breaker */}
-                <g className="cursor-pointer" onClick={() => onSelectAsset(ict.cbLv)}>
+                {/* 220 kV Breaker with generous touch hit-box */}
+                <g className="cursor-pointer" onClick={() => handleAssetClick(ict.cbLv)}>
+                  <rect
+                    x={ict.x - 22}
+                    y="357"
+                    width="44"
+                    height="44"
+                    fill="transparent"
+                    pointerEvents="all"
+                  />
                   <rect
                     x={ict.x - 9}
                     y="370"
@@ -464,11 +641,12 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
             220 kV MAIN SWITCHYARD (NOMINAL 220 kV)
           </text>
 
-          {/* 220 kV Bus 1 */}
+          {/* 220 kV Bus 1 with generous touch hit-line */}
           <g
             className="cursor-pointer group"
-            onClick={() => onSelectAsset('BUS-220-1')}
+            onClick={() => handleAssetClick('BUS-220-1')}
           >
+            <line x1="70" y1="465" x2="1140" y2="465" stroke="transparent" strokeWidth="32" pointerEvents="stroke" />
             <line
               x1="70"
               y1="465"
@@ -483,11 +661,12 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
             </text>
           </g>
 
-          {/* 220 kV Bus 2 */}
+          {/* 220 kV Bus 2 with generous touch hit-line */}
           <g
             className="cursor-pointer group"
-            onClick={() => onSelectAsset('BUS-220-2')}
+            onClick={() => handleAssetClick('BUS-220-2')}
           >
+            <line x1="70" y1="500" x2="1140" y2="500" stroke="transparent" strokeWidth="32" pointerEvents="stroke" />
             <line
               x1="70"
               y1="500"
@@ -503,18 +682,19 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           </g>
 
           {/* 220 kV Bus Coupler Bay 207 */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-207')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-207')}>
+            <rect x="1080" y="460" width="50" height="50" fill="transparent" pointerEvents="all" />
             <line x1="1100" y1="465" x2="1100" y2="500" stroke={COLOR_220KV} strokeWidth="2.5" />
             <rect
               x="1092"
               y="477"
-              width="16"
-              height="16"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-207']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-207' ? '2.5' : '1.5'}
             />
-            <text x="1100" y="489" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
+            <text x="1101" y="489" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
               BC
             </text>
             <text x="1115" y="488" fill="#cbd5e1" fontSize="9" fontFamily="monospace">
@@ -524,16 +704,17 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
 
           {/* 220 kV Outgoing Feeder Bays */}
           {/* Feeder 1: Perecherla (Bay 204) */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-204')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-204')}>
+            <rect x="850" y="490" width="60" height="105" fill="transparent" pointerEvents="all" />
             <line x1="880" y1="465" x2="880" y2="560" stroke={COLOR_220KV} strokeWidth="2.5" />
             <rect
-              x="872"
-              y="520"
-              width="16"
-              height="16"
+              x="871"
+              y="519"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-204']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-204' ? '2.5' : '1.5'}
             />
             <polygon points="880,575 875,560 885,560" fill="#06b6d4" />
             <text x="880" y="590" fill="#a5f3fc" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
@@ -545,16 +726,17 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           </g>
 
           {/* Feeder 2: Chilakaluripet (Bay 205) */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-205')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-205')}>
+            <rect x="970" y="490" width="60" height="105" fill="transparent" pointerEvents="all" />
             <line x1="1000" y1="465" x2="1000" y2="560" stroke={COLOR_220KV} strokeWidth="2.5" />
             <rect
-              x="992"
-              y="520"
-              width="16"
-              height="16"
+              x="991"
+              y="519"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-205']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-205' ? '2.5' : '1.5'}
             />
             <polygon points="1000,575 995,560 1005,560" fill="#06b6d4" />
             <text x="1000" y="590" fill="#a5f3fc" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
@@ -566,16 +748,17 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
           </g>
 
           {/* Feeder 3: Nadikudi (Bay 206) */}
-          <g className="cursor-pointer" onClick={() => onSelectAsset('CB-206')}>
+          <g className="cursor-pointer" onClick={() => handleAssetClick('CB-206')}>
+            <rect x="110" y="490" width="60" height="105" fill="transparent" pointerEvents="all" />
             <line x1="140" y1="465" x2="140" y2="560" stroke={COLOR_220KV} strokeWidth="2.5" />
             <rect
-              x="132"
-              y="520"
-              width="16"
-              height="16"
+              x="131"
+              y="519"
+              width="18"
+              height="18"
               fill={getCbColor(telemetry.breakers['CB-206']?.state || 'CLOSED')}
               stroke="#fff"
-              strokeWidth="1.5"
+              strokeWidth={selectedAssetId === 'CB-206' ? '2.5' : '1.5'}
             />
             <polygon points="140,575 135,560 145,560" fill="#06b6d4" />
             <text x="140" y="590" fill="#a5f3fc" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
@@ -589,9 +772,10 @@ export const SingleLineDiagram: React.FC<SLDProps> = ({
       </div>
 
       {/* Floating Instructions Bottom Pill */}
-      <div className="absolute bottom-3 left-4 bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded text-xs text-slate-300 flex items-center gap-2 pointer-events-none">
-        <Info className="w-3.5 h-3.5 text-cyan-400" />
-        <span>Click any Transformer, Breaker, or Busbar to open engineering telemetry & condition inspector</span>
+      <div className="absolute bottom-3 left-3 right-3 sm:right-auto bg-slate-900/95 border border-slate-700/80 px-3 py-2 rounded-lg text-[11px] text-slate-300 flex items-center gap-2 pointer-events-none shadow-xl max-w-md">
+        <Info className="w-4 h-4 text-cyan-400 shrink-0" />
+        <span className="hidden sm:inline">Click any Transformer, Breaker, or Busbar to open engineering inspector</span>
+        <span className="sm:hidden">1-finger drag · 2-finger pinch zoom · Tap element to inspect</span>
       </div>
     </div>
   );

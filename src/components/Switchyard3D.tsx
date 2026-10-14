@@ -15,7 +15,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { SubstationAsset } from '../types/substation';
 import { TelemetryState } from '../services/telemetryEngine';
-import { Camera, Eye, Focus, RefreshCw, ZoomIn, ZoomOut, Compass, Sun, Moon, Clock } from 'lucide-react';
+import {
+  Camera,
+  Eye,
+  Focus,
+  RefreshCw,
+  ZoomIn,
+  ZoomOut,
+  Compass,
+  Sun,
+  Moon,
+  Clock,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 
 export type LightMode = 'AUTO' | 'DAY' | 'NIGHT';
 
@@ -36,6 +50,7 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
   const [hoveredAsset, setHoveredAsset] = useState<SubstationAsset | null>(null);
   const [activePreset, setActivePreset] = useState<string>('aerial');
   const [lightMode, setLightMode] = useState<LightMode>('AUTO');
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
 
   // Internal Three.js references
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -261,12 +276,150 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
       }
     };
 
+    // Touch Interaction State & Gestures
+    const touchState = {
+      isTracking: false,
+      startX: 0,
+      startY: 0,
+      startTime: 0,
+      lastX: 0,
+      lastY: 0,
+      initialDistance: 0,
+      initialRadius: 75,
+      isPinching: false,
+      hasMoved: false,
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchState.isTracking = true;
+        touchState.startX = t.clientX;
+        touchState.startY = t.clientY;
+        touchState.startTime = Date.now();
+        touchState.lastX = t.clientX;
+        touchState.lastY = t.clientY;
+        touchState.initialDistance = 0;
+        touchState.initialRadius = spherical.current.radius;
+        touchState.isPinching = false;
+        touchState.hasMoved = false;
+      } else if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        touchState.isPinching = true;
+        touchState.initialDistance = dist;
+        touchState.initialRadius = spherical.current.radius;
+        touchState.lastX = (t1.clientX + t2.clientX) / 2;
+        touchState.lastY = (t1.clientY + t2.clientY) / 2;
+        touchState.hasMoved = true;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      if (!touchState.isTracking && !touchState.isPinching) return;
+
+      if (e.touches.length === 1 && !touchState.isPinching) {
+        const t = e.touches[0];
+        const dx = t.clientX - touchState.lastX;
+        const dy = t.clientY - touchState.lastY;
+        const totalDist = Math.hypot(t.clientX - touchState.startX, t.clientY - touchState.startY);
+
+        if (totalDist > 8) {
+          touchState.hasMoved = true;
+        }
+
+        touchState.lastX = t.clientX;
+        touchState.lastY = t.clientY;
+
+        // Single-finger drag: Orbit/rotate scene
+        spherical.current.theta -= dx * 0.007;
+        spherical.current.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, spherical.current.phi - dy * 0.007));
+        updateCameraPosition();
+      } else if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+
+        // Two-finger pinch/spread: Zoom in/out
+        if (touchState.initialDistance > 0 && currentDist > 0) {
+          const ratio = touchState.initialDistance / currentDist;
+          spherical.current.radius = Math.max(15, Math.min(140, touchState.initialRadius * ratio));
+        }
+
+        // Two-finger drag: Pan scene
+        const panDx = midX - touchState.lastX;
+        const panDy = midY - touchState.lastY;
+        touchState.lastX = midX;
+        touchState.lastY = midY;
+
+        // Calculate pan in camera space
+        const forward = new THREE.Vector3().subVectors(targetLookAt.current, camera.position).normalize();
+        forward.y = 0;
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+        targetLookAt.current.addScaledVector(right, -panDx * 0.08);
+        targetLookAt.current.addScaledVector(forward, panDy * 0.08);
+
+        updateCameraPosition();
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        const elapsed = Date.now() - touchState.startTime;
+        // Check if clean tap (duration < 300ms and total movement < 10px)
+        if (!touchState.hasMoved && elapsed < 300) {
+          const rect = renderer.domElement.getBoundingClientRect();
+          const mouse = new THREE.Vector2(
+            ((touchState.startX - rect.left) / rect.width) * 2 - 1,
+            -((touchState.startY - rect.top) / rect.height) * 2 + 1
+          );
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, camera);
+
+          const targets = Array.from(interactableObjects.current.keys());
+          const intersects = raycaster.intersectObjects(targets, true);
+
+          if (intersects.length > 0) {
+            let cur: THREE.Object3D | null = intersects[0].object;
+            while (cur && !interactableObjects.current.has(cur)) {
+              cur = cur.parent;
+            }
+            if (cur) {
+              const assetId = interactableObjects.current.get(cur);
+              if (assetId) {
+                onSelectAsset(assetId);
+              }
+            }
+          }
+        }
+
+        touchState.isTracking = false;
+        touchState.isPinching = false;
+      } else if (e.touches.length === 1) {
+        touchState.lastX = e.touches[0].clientX;
+        touchState.lastY = e.touches[0].clientY;
+        touchState.isPinching = false;
+      }
+    };
+
     const dom = renderer.domElement;
+    dom.style.touchAction = 'none';
     dom.addEventListener('mousedown', handlePointerDown);
     window.addEventListener('mousemove', handlePointerMove);
     window.addEventListener('mouseup', handlePointerUp);
     dom.addEventListener('wheel', handleWheel, { passive: false });
     dom.addEventListener('click', handleClick);
+
+    // Touch listeners
+    dom.addEventListener('touchstart', handleTouchStart, { passive: false });
+    dom.addEventListener('touchmove', handleTouchMove, { passive: false });
+    dom.addEventListener('touchend', handleTouchEnd, { passive: false });
+    dom.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 
     // Resize handler
     const handleResize = () => {
@@ -303,6 +456,10 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
       window.removeEventListener('mouseup', handlePointerUp);
       dom.removeEventListener('wheel', handleWheel);
       dom.removeEventListener('click', handleClick);
+      dom.removeEventListener('touchstart', handleTouchStart);
+      dom.removeEventListener('touchmove', handleTouchMove);
+      dom.removeEventListener('touchend', handleTouchEnd);
+      dom.removeEventListener('touchcancel', handleTouchEnd);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
     };
@@ -782,30 +939,136 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
     scene.add(crbGroup);
   };
 
-  return (
-    <div className="relative w-full h-full bg-slate-950 overflow-hidden select-none">
-      {/* 3D Canvas Mount */}
-      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+  const cameraPresets = [
+    { id: 'aerial', label: 'Overview Aerial' },
+    { id: '400kv', label: '400 kV Yard' },
+    { id: 'transformers', label: 'ICTs 1-3' },
+    { id: '220kv', label: '220 kV Yard' },
+    { id: 'reactor', label: 'Bus Reactor' },
+    { id: 'control_room', label: 'Control Room' },
+  ];
 
-      {/* Floating 3D Control Bar & Camera Presets */}
-      <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg p-2 flex flex-wrap items-center gap-2 shadow-xl z-10 text-xs">
+  return (
+    <div className="relative w-full h-full bg-slate-950 overflow-hidden select-none" style={{ touchAction: 'none' }}>
+      {/* 3D Canvas Mount */}
+      <div
+        ref={mountRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+      />
+
+      {/* MOBILE TOP CONTROLS PILL (md:hidden) */}
+      <div className="md:hidden absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-20 pointer-events-none">
+        <div className="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-lg px-3 py-2 text-xs text-white flex items-center gap-2 pointer-events-auto shadow-xl">
+          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span className="font-mono text-[11px] font-semibold">{activePreset.toUpperCase()}</span>
+          <span className="text-slate-500">·</span>
+          <span className="text-[11px] font-mono text-cyan-300">
+            {lightMode === 'DAY' ? '☀️ Day' : lightMode === 'NIGHT' ? '🌙 Night' : `🕒 ${autoIsDay ? 'Day' : 'Night'}`}
+          </span>
+        </div>
+
+        <button
+          onClick={() => setMobileControlsOpen(!mobileControlsOpen)}
+          className="min-h-[44px] px-3.5 py-2 rounded-lg bg-slate-900/95 backdrop-blur border border-slate-700 text-white font-medium text-xs flex items-center gap-2 shadow-2xl pointer-events-auto active:scale-95 transition-transform"
+          aria-label="Toggle camera presets and lighting controls"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+          <span>Views & Lights</span>
+          {mobileControlsOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+        </button>
+      </div>
+
+      {/* MOBILE SLIDE-DOWN DRAWER (md:hidden) */}
+      {mobileControlsOpen && (
+        <div className="md:hidden absolute top-16 left-3 right-3 bg-slate-900/98 backdrop-blur-md border border-slate-700/90 rounded-xl p-4 shadow-2xl z-30 space-y-4 animate-in slide-in-from-top-4 duration-200">
+          <div>
+            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-cyan-400" /> Camera Presets
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {cameraPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => {
+                    setCameraPreset(preset.id);
+                    setMobileControlsOpen(false);
+                  }}
+                  className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors flex items-center justify-between ${
+                    activePreset === preset.id
+                      ? 'bg-emerald-600 text-white shadow font-semibold'
+                      : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{preset.label}</span>
+                  {activePreset === preset.id && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 pt-3">
+            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5 text-amber-400" /> Yard Lighting Mode
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setLightMode('AUTO')}
+                className={`min-h-[44px] px-2 py-2 rounded-lg text-xs font-medium flex flex-col items-center justify-center gap-1 transition-colors ${
+                  lightMode === 'AUTO'
+                    ? 'bg-cyan-600 text-white shadow font-semibold'
+                    : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Clock className="w-4 h-4 text-cyan-300" />
+                <span>Auto ({autoIsDay ? 'Day' : 'Night'})</span>
+              </button>
+              <button
+                onClick={() => setLightMode('DAY')}
+                className={`min-h-[44px] px-2 py-2 rounded-lg text-xs font-medium flex flex-col items-center justify-center gap-1 transition-colors ${
+                  lightMode === 'DAY'
+                    ? 'bg-amber-600 text-white shadow font-semibold'
+                    : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Sun className="w-4 h-4 text-amber-300" />
+                <span>Day Mode</span>
+              </button>
+              <button
+                onClick={() => setLightMode('NIGHT')}
+                className={`min-h-[44px] px-2 py-2 rounded-lg text-xs font-medium flex flex-col items-center justify-center gap-1 transition-colors ${
+                  lightMode === 'NIGHT'
+                    ? 'bg-indigo-600 text-white shadow font-semibold'
+                    : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <Moon className="w-4 h-4 text-indigo-300" />
+                <span>Night Mode</span>
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setMobileControlsOpen(false)}
+            className="w-full min-h-[44px] py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
+          >
+            Close Controls
+          </button>
+        </div>
+      )}
+
+      {/* DESKTOP FLOATING CAMERA PRESETS (hidden md:flex) */}
+      <div className="hidden md:flex absolute top-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg p-2 items-center gap-2 shadow-xl z-10 text-xs">
         <div className="flex items-center gap-1.5 px-2 py-1 text-slate-300 font-medium">
           <Camera className="w-3.5 h-3.5 text-cyan-400" />
           <span>Camera Presets:</span>
         </div>
 
-        {[
-          { id: 'aerial', label: 'Overview Aerial' },
-          { id: '400kv', label: '400 kV Yard' },
-          { id: 'transformers', label: 'ICTs 1-3' },
-          { id: '220kv', label: '220 kV Yard' },
-          { id: 'reactor', label: 'Bus Reactor' },
-          { id: 'control_room', label: 'Control Room' },
-        ].map((preset) => (
+        {cameraPresets.map((preset) => (
           <button
             key={preset.id}
             onClick={() => setCameraPreset(preset.id)}
-            className={`px-2.5 py-1 rounded transition-colors text-xs font-medium ${
+            className={`min-h-[36px] px-2.5 py-1 rounded transition-colors text-xs font-medium ${
               activePreset === preset.id
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -816,11 +1079,11 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
         ))}
       </div>
 
-      {/* Floating 3D Lighting Mode Override Toggle & Status */}
-      <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg p-2 flex flex-wrap items-center gap-2 shadow-xl z-10 text-xs">
+      {/* DESKTOP FLOATING LIGHTING MODE (hidden md:flex) */}
+      <div className="hidden md:flex absolute top-3 right-3 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg p-2 items-center gap-2 shadow-xl z-10 text-xs">
         {/* Mode Status Badge */}
         <div className="flex items-center gap-1.5 px-2 py-1 text-slate-300 font-medium">
-          <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold hidden md:inline">Lighting:</span>
+          <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Lighting:</span>
           {lightMode === 'AUTO' && (
             <span className="flex items-center gap-1 text-cyan-300 font-mono text-[11px]">
               <Clock className="w-3.5 h-3.5 text-cyan-400" />
@@ -842,10 +1105,10 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
         </div>
 
         {/* Override Toggle Buttons */}
-        <div className="flex items-center bg-slate-950 border border-slate-800 rounded-md p-0.5">
+        <div className="flex items-center bg-slate-950 border border-slate-800 rounded-md p-0.5 min-h-[36px]">
           <button
             onClick={() => setLightMode('AUTO')}
-            className={`px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
+            className={`min-h-[32px] px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
               lightMode === 'AUTO'
                 ? 'bg-cyan-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -857,7 +1120,7 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
           </button>
           <button
             onClick={() => setLightMode('DAY')}
-            className={`px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
+            className={`min-h-[32px] px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
               lightMode === 'DAY'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -869,7 +1132,7 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
           </button>
           <button
             onClick={() => setLightMode('NIGHT')}
-            className={`px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
+            className={`min-h-[32px] px-2.5 py-1 rounded transition-colors text-xs font-medium flex items-center gap-1.5 ${
               lightMode === 'NIGHT'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -884,10 +1147,10 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
 
       {/* Hover Info Tooltip */}
       {hoveredAsset && (
-        <div className="absolute top-16 left-3 bg-slate-900/95 border border-emerald-500/50 rounded-lg p-3 shadow-2xl z-10 max-w-xs text-xs pointer-events-none animate-fadeIn">
+        <div className="absolute top-16 md:top-16 left-3 right-3 sm:right-auto bg-slate-900/95 border border-emerald-500/50 rounded-lg p-3 shadow-2xl z-10 sm:max-w-xs text-xs pointer-events-none animate-fadeIn">
           <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5 mb-1.5">
             <span className="font-bold text-white font-mono">{hoveredAsset.id}</span>
-            <span className="text-[10px] text-emerald-400 font-mono">CLICK TO INSPECT</span>
+            <span className="text-[10px] text-emerald-400 font-mono">TAP TO INSPECT</span>
           </div>
           <div className="text-slate-300 font-medium text-xs mb-1">{hoveredAsset.name}</div>
           <div className="text-[11px] text-slate-400">{hoveredAsset.bayName}</div>
@@ -913,9 +1176,10 @@ export const Switchyard3D: React.FC<Switchyard3DProps> = ({
       )}
 
       {/* Bottom Navigation Hint */}
-      <div className="absolute bottom-3 right-3 bg-slate-900/90 border border-slate-800 rounded px-3 py-1.5 text-[11px] text-slate-400 font-mono flex items-center gap-2 pointer-events-none">
-        <Compass className="w-3.5 h-3.5 text-cyan-400" />
-        <span>Drag to orbit · Scroll to zoom · Click asset to inspect</span>
+      <div className="absolute bottom-3 left-3 sm:left-auto right-3 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2 text-[11px] text-slate-300 font-mono flex items-center gap-2 pointer-events-none shadow-lg">
+        <Compass className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+        <span className="hidden sm:inline">Drag to orbit · Scroll to zoom · Click asset to inspect</span>
+        <span className="sm:hidden">1-finger orbit · 2-finger pinch zoom · Tap asset to inspect</span>
       </div>
     </div>
   );

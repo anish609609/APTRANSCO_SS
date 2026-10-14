@@ -82,7 +82,7 @@ export default function App() {
   const activeAlarmCount = alarms.filter((a) => a.status === 'ACTIVE').length;
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-sans antialiased text-slate-100">
+    <div className="flex flex-col h-screen w-full max-w-full overflow-x-hidden overflow-y-hidden bg-slate-950 font-sans antialiased text-slate-100">
       {/* Global Control Header */}
       <Header
         telemetry={telemetry}

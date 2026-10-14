@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+@layer base {
+  html, body, #root {
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+}

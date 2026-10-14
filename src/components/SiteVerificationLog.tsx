@@ -78,10 +78,10 @@ export const SiteVerificationLog: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-950 text-slate-100">
       {/* Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <div className="flex items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-amber-950/80 border border-amber-600/50 text-amber-400">
+            <div className="p-2.5 rounded-lg bg-amber-950/80 border border-amber-600/50 text-amber-400 shrink-0">
               <FileCheck2 className="w-5 h-5" />
             </div>
             <div>
@@ -96,101 +96,118 @@ export const SiteVerificationLog: React.FC = () => {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors whitespace-nowrap"
+            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow"
           >
             <Plus className="w-4 h-4" /> Add Verification Item
           </button>
         </div>
       </div>
 
-      {/* Verification Ledger Table */}
+      {/* Verification Ledger Table with touch-scrolling */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
-              <th className="p-3">Ref ID</th>
-              <th className="p-3">Substation Element / Parameter</th>
-              <th className="p-3">Provisional Assumption in Prototype</th>
-              <th className="p-3">Site Verification Required from APTRANSCO</th>
-              <th className="p-3">Status</th>
-              <th className="p-3 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 font-sans">
-            {items.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                <td className="p-3 font-mono text-cyan-400 font-bold">{item.id}</td>
-                <td className="p-3 font-semibold text-white max-w-xs">{item.item}</td>
-                <td className="p-3 text-slate-300 max-w-xs">{item.provisionalAssumption}</td>
-                <td className="p-3 text-slate-400 max-w-sm">{item.fieldVerificationNeeded}</td>
-                <td className="p-3 whitespace-nowrap">{getStatusBadge(item.status)}</td>
-                <td className="p-3 text-right whitespace-nowrap">
-                  <button
-                    onClick={() => toggleStatus(item.id)}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"
-                  >
-                    Toggle Status
-                  </button>
-                </td>
+        <div className="w-full overflow-x-auto touch-scroll">
+          <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+            <thead>
+              <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+                <th className="p-3">Ref ID</th>
+                <th className="p-3">Substation Element / Parameter</th>
+                <th className="p-3">Provisional Assumption in Prototype</th>
+                <th className="p-3">Site Verification Required from APTRANSCO</th>
+                <th className="p-3">Status</th>
+                <th className="p-3 text-right">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-sans">
+              {items.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="p-3 font-mono text-cyan-400 font-bold">{item.id}</td>
+                  <td className="p-3 font-semibold text-white max-w-xs">{item.item}</td>
+                  <td className="p-3 text-slate-300 max-w-xs">{item.provisionalAssumption}</td>
+                  <td className="p-3 text-slate-400 max-w-sm">{item.fieldVerificationNeeded}</td>
+                  <td className="p-3 whitespace-nowrap">{getStatusBadge(item.status)}</td>
+                  <td className="p-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => toggleStatus(item.id)}
+                      className="min-h-[38px] px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded-lg text-xs transition-colors"
+                    >
+                      Toggle Status
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Add Modal */}
+      {/* Add Modal (Mobile bottom-sheet) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl text-xs">
-            <h3 className="font-bold text-white text-sm">Add Site Verification Assumption</h3>
-            <form onSubmit={handleAddItem} className="space-y-3">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col p-4 sm:p-5 space-y-4 shadow-2xl overflow-y-auto touch-scroll text-xs">
+            {/* Drag Handle Indicator */}
+            <div className="sm:hidden -mt-2 pb-1 flex justify-center">
+              <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
+            </div>
+
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-white text-sm">Add Site Verification Assumption</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-lg flex items-center justify-center"
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddItem} className="space-y-3.5">
               <div>
-                <label className="block text-slate-400 mb-1">Substation Element / Specification:</label>
+                <label className="block text-slate-400 mb-1 font-medium">Substation Element / Specification:</label>
                 <input
                   type="text"
                   required
                   value={newItemText}
                   onChange={(e) => setNewItemText(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white"
+                  className="min-h-[44px] w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                   placeholder="e.g. 33 kV Tertiary Station Transformer arrangement"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Provisional Prototype Assumption:</label>
+                <label className="block text-slate-400 mb-1 font-medium">Provisional Prototype Assumption:</label>
                 <textarea
                   required
                   rows={2}
                   value={newAssumption}
                   onChange={(e) => setNewAssumption(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                   placeholder="e.g. Assumed two 5 MVA 33/0.415 kV station auxiliary transformers"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Verification Required from APTRANSCO Field:</label>
+                <label className="block text-slate-400 mb-1 font-medium">Verification Required from APTRANSCO Field:</label>
                 <textarea
                   required
                   rows={2}
                   value={newNeeded}
                   onChange={(e) => setNewNeeded(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                   placeholder="e.g. Inspect auxiliary switchgear room at Sattenapalli CRB"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+                  className="min-h-[44px] px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-white font-medium"
+                  className="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors shadow"
                 >
                   Record Item
                 </button>

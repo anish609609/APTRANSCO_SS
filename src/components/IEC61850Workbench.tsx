@@ -56,11 +56,11 @@ export const IEC61850Workbench: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-4 text-xs font-medium">
+      {/* Tabs (Touch-scrollable on mobile) */}
+      <div className="flex border-b border-slate-800 gap-2 sm:gap-4 text-xs font-medium overflow-x-auto scrollbar-none whitespace-nowrap touch-scroll pb-1">
         <button
           onClick={() => setActiveTab('POINT_MAP')}
-          className={`py-2 border-b-2 transition-colors ${
+          className={`min-h-[44px] py-2.5 px-3 border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
             activeTab === 'POINT_MAP'
               ? 'border-emerald-400 text-white font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -71,7 +71,7 @@ export const IEC61850Workbench: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('CONNECTORS')}
-          className={`py-2 border-b-2 transition-colors ${
+          className={`min-h-[44px] py-2.5 px-3 border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
             activeTab === 'CONNECTORS'
               ? 'border-emerald-400 text-white font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -82,18 +82,18 @@ export const IEC61850Workbench: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('CYBERSECURITY')}
-          className={`py-2 border-b-2 transition-colors ${
+          className={`min-h-[44px] py-2.5 px-3 border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
             activeTab === 'CYBERSECURITY'
               ? 'border-emerald-400 text-white font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Network Segmentation & IEC 62351 Security
+          Network Segmentation & Security
         </button>
 
         <button
           onClick={() => setActiveTab('SCL_VIEW')}
-          className={`py-2 border-b-2 transition-colors ${
+          className={`min-h-[44px] py-2.5 px-3 border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
             activeTab === 'SCL_VIEW'
               ? 'border-emerald-400 text-white font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -106,36 +106,38 @@ export const IEC61850Workbench: React.FC = () => {
       {/* 1. Point Mapping Table */}
       {activeTab === 'POINT_MAP' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
-                <th className="p-3">Logical Device / IED</th>
-                <th className="p-3">Logical Node</th>
-                <th className="p-3">Data Object / Attrib</th>
-                <th className="p-3">Description</th>
-                <th className="p-3">Image Asset</th>
-                <th className="p-3">Protocol Profile</th>
-                <th className="p-3">Quality Bit Handling</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
-              {IEC61850_POINT_MAPPINGS.map((p, idx) => (
-                <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="p-3 text-cyan-400">{p.logicalDevice}</td>
-                  <td className="p-3 text-amber-300 font-bold">{p.logicalNode}</td>
-                  <td className="p-3 text-emerald-400">{`${p.dataObject}.${p.dataAttribute}`}</td>
-                  <td className="p-3 font-sans text-slate-300">{p.iecDescription}</td>
-                  <td className="p-3 text-white font-bold">{p.digitalImageAssetId}</td>
-                  <td className="p-3">
-                    <span className="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-[10px] text-slate-300">
-                      {p.protocolProfile}
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-400 font-sans text-[11px]">{p.qualityMapping}</td>
+          <div className="w-full overflow-x-auto touch-scroll">
+            <table className="w-full text-left border-collapse text-xs min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+                  <th className="p-3">Logical Device / IED</th>
+                  <th className="p-3">Logical Node</th>
+                  <th className="p-3">Data Object / Attrib</th>
+                  <th className="p-3">Description</th>
+                  <th className="p-3">Image Asset</th>
+                  <th className="p-3">Protocol Profile</th>
+                  <th className="p-3">Quality Bit Handling</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-mono">
+                {IEC61850_POINT_MAPPINGS.map((p, idx) => (
+                  <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="p-3 text-cyan-400">{p.logicalDevice}</td>
+                    <td className="p-3 text-amber-300 font-bold">{p.logicalNode}</td>
+                    <td className="p-3 text-emerald-400">{`${p.dataObject}.${p.dataAttribute}`}</td>
+                    <td className="p-3 font-sans text-slate-300">{p.iecDescription}</td>
+                    <td className="p-3 text-white font-bold">{p.digitalImageAssetId}</td>
+                    <td className="p-3">
+                      <span className="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-[10px] text-slate-300">
+                        {p.protocolProfile}
+                      </span>
+                    </td>
+                    <td className="p-3 text-slate-400 font-sans text-[11px]">{p.qualityMapping}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -239,27 +241,28 @@ export const IEC61850Workbench: React.FC = () => {
       {/* 4. SCL View */}
       {activeTab === 'SCL_VIEW' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-emerald-400" />
+              <FileCode className="w-4 h-4 text-emerald-400 shrink-0" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                 Provisional Substation Configuration Description (SCL XML)
               </h4>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleCopyScl}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs flex items-center gap-1.5 transition-colors"
+                className="min-h-[44px] px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
-                <Copy className="w-3.5 h-3.5" />
-                {copied ? 'Copied XML!' : 'Copy SCL'}
+                <Copy className="w-4 h-4" />
+                <span>{copied ? 'Copied XML!' : 'Copy SCL'}</span>
               </button>
               <button
                 onClick={handleDownloadScl}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs flex items-center gap-1.5 transition-colors font-medium"
+                className="min-h-[44px] px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors font-medium shadow"
               >
-                <Download className="w-3.5 h-3.5" /> Download .SCD File
+                <Download className="w-4 h-4" />
+                <span>Download .SCD File</span>
               </button>
             </div>
           </div>

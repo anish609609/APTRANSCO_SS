@@ -25,6 +25,7 @@
    - [Configurable Asset Inventory & Bay Registry](#7-configurable-asset-inventory--bay-registry)
    - [IEC 61850 Utility Integration Workbench](#8-iec-61850-utility-integration-workbench)
    - [Provisional Site Verification Ledger](#9-provisional-site-verification-ledger)
+   - [Mobile & Touch Interaction Architecture](#10-mobile--touch-interaction-architecture)
 4. [Cybersecurity & Network Segmentation (IEC 62351)](#cybersecurity--network-segmentation-iec-62351)
 5. [Getting Started & Local Development](#getting-started--local-development)
 6. [Technology Stack](#technology-stack)
@@ -123,6 +124,19 @@ Configurable operational scenarios to test digital image behavior:
 
 ### 9. Provisional Site Verification Ledger
 - Centralized verification matrix tracking preliminary assumptions (transformer nameplate data, busbar conductor sizes, feeder bay destinations, shunt reactor ratings) against required APTRANSCO engineering documents.
+
+### 10. Mobile & Touch Interaction Architecture
+- **Responsive Navigation:** Hamburger drawer on mobile viewports with min 48px touch targets, quick status indicators, and collapsible view switches.
+- **3D Switchyard Touch Gestures:**
+  - 1-Finger Drag: Orbit & tilt around switchyard.
+  - 2-Finger Pinch: Smooth camera zoom in and out.
+  - 2-Finger Drag: Pan switchyard coordinate space.
+  - `touchAction: 'none'` on canvas preventing page scroll / pull-to-refresh conflicts.
+  - Floating touch overlay drawer for camera presets and daylight/night lighting overrides.
+  - GPU mobile throttle with `devicePixelRatio` clamp to 2 for sustained 60fps rendering.
+- **Single-Line Diagram (SLD) Mobile Pinch & Pan:** SVG viewport with multi-touch gestures, scale reset, and generous 44px+ hit-test targets around circuit breakers, transformers, and busbars.
+- **Bottom-Sheet Modal Inspections:** Asset Detail Inspector and Add Asset modals slide up as full-screen/bottom sheets with pull handles on mobile screens.
+- **High-Density Table Touch Scrolling:** Horizontal touch-scroll containers (`-webkit-overflow-scrolling: touch`) across Alarm logs, Audit records, IEC 61850 point mapping, and Asset inventory tables.
 
 ---
 
