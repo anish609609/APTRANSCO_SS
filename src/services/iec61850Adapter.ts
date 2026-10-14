@@ -14,7 +14,7 @@ export interface IEC61850PointMap {
   dataObject: string;  // e.g. "TotW", "Pos", "WdHotSpot"
   dataAttribute: string; // e.g. "mag.f", "stVal", "q", "t"
   iecDescription: string;
-  digitalTwinAssetId: string;
+  digitalImageAssetId: string;
   metricKey: string;
   unit: string;
   protocolProfile: 'MMS_REPORT' | 'GOOSE_MULTICAST' | 'SAMPLED_VALUES_9_2';
@@ -29,7 +29,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'TotW',
     dataAttribute: 'mag.f',
     iecDescription: 'Three-phase total active power (MW)',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'activePowerMW',
     unit: 'MW',
     protocolProfile: 'MMS_REPORT',
@@ -41,7 +41,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'TotVAr',
     dataAttribute: 'mag.f',
     iecDescription: 'Three-phase total reactive power (MVAR)',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'reactivePowerMVAR',
     unit: 'MVAR',
     protocolProfile: 'MMS_REPORT',
@@ -53,7 +53,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'PhV.phsA',
     dataAttribute: 'cVal.mag.f',
     iecDescription: 'Phase A voltage magnitude (400 kV bus step-down)',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'hvVoltageKV',
     unit: 'kV',
     protocolProfile: 'MMS_REPORT',
@@ -65,7 +65,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'WdHotSpot',
     dataAttribute: 'mag.f',
     iecDescription: 'Calculated / Fibre optic winding hot-spot temperature',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'windingHotSpotTempC',
     unit: '°C',
     protocolProfile: 'MMS_REPORT',
@@ -77,7 +77,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'TopOilTmp',
     dataAttribute: 'mag.f',
     iecDescription: 'OTI top oil temperature reading from RTD transmitter',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'topOilTempC',
     unit: '°C',
     protocolProfile: 'MMS_REPORT',
@@ -89,7 +89,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'TapPos',
     dataAttribute: 'valW.f',
     iecDescription: 'OLTC tap position indicator',
-    digitalTwinAssetId: 'ICT-01',
+    digitalImageAssetId: 'ICT-01',
     metricKey: 'tapPosition',
     unit: 'step (1-17)',
     protocolProfile: 'MMS_REPORT',
@@ -102,7 +102,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'Pos',
     dataAttribute: 'stVal',
     iecDescription: 'Circuit breaker operating switch position (00=Inter, 01=Closed, 10=Open, 11=Bad)',
-    digitalTwinAssetId: 'CB-401',
+    digitalImageAssetId: 'CB-401',
     metricKey: 'state',
     unit: 'State',
     protocolProfile: 'GOOSE_MULTICAST',
@@ -114,7 +114,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'Pres',
     dataAttribute: 'mag.f',
     iecDescription: 'SF6 gas insulation density / pressure sensor',
-    digitalTwinAssetId: 'CB-401',
+    digitalImageAssetId: 'CB-401',
     metricKey: 'sf6PressureBar',
     unit: 'bar',
     protocolProfile: 'MMS_REPORT',
@@ -126,7 +126,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'OpCnt',
     dataAttribute: 'stVal',
     iecDescription: 'Mechanical breaker operation counter',
-    digitalTwinAssetId: 'CB-401',
+    digitalImageAssetId: 'CB-401',
     metricKey: 'operatingCounter',
     unit: 'operations',
     protocolProfile: 'MMS_REPORT',
@@ -139,7 +139,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'TotVAr',
     dataAttribute: 'mag.f',
     iecDescription: '125 MVAR Shunt reactor reactive power consumption',
-    digitalTwinAssetId: 'RE-401',
+    digitalImageAssetId: 'RE-401',
     metricKey: 'reactivePowerMVAR',
     unit: 'MVAR',
     protocolProfile: 'MMS_REPORT',
@@ -152,7 +152,7 @@ export const IEC61850_POINT_MAPPINGS: IEC61850PointMap[] = [
     dataObject: 'Hz',
     dataAttribute: 'mag.f',
     iecDescription: '400 kV Main Busbar system frequency',
-    digitalTwinAssetId: 'BUS-400-1',
+    digitalImageAssetId: 'BUS-400-1',
     metricKey: 'frequencyHz',
     unit: 'Hz',
     protocolProfile: 'MMS_REPORT',
@@ -178,8 +178,8 @@ export const CONNECTOR_SPECS: ProtocolConnectorSpec[] = [
     networkSegment: 'Station Bus (VLAN 10: 192.168.12.0/24, isolated from corporate LAN via Data Diode / Firewall)',
     securityControls: [
       'IEC 62351-4 TLS 1.3 Transport Security with digital certificates',
-      'Role-based access control (read-only monitoring credential for digital twin)',
-      'Substation DMZ termination with unidirectional data diode to digital twin ingestion service',
+      'Role-based access control (read-only monitoring credential for digital image)',
+      'Substation DMZ termination with unidirectional data diode to digital image ingestion service',
     ],
     failureBehavior: 'Automatic TCP reconnect with 5s exponential backoff, buffer replay with sequence number deduplication, flags stale telemetry if silence > 10s.',
     acceptanceTestCriteria: 'Verify report dataset reception without packet drops over 72 hours; verify timestamp skew < 10ms with substation GPS Master Clock (PTP IEEE 1588).',
@@ -191,10 +191,10 @@ export const CONNECTOR_SPECS: ProtocolConnectorSpec[] = [
     networkSegment: 'Process Bus / Inter-bay Bus (VLAN 20: Strict physical segregation or MAC filtering)',
     securityControls: [
       'IEC 62351-6 GOOSE digital signature authentication',
-      'Read-only SPAN port mirror to Digital Twin network adapter (TX disabled physically on SFP fiber transceiver)',
+      'Read-only SPAN port mirror to Digital Image network adapter (TX disabled physically on SFP fiber transceiver)',
     ],
     failureBehavior: 'Stale flag asserted if timeAllowedToLive expires before next retransmission; alert on SqNum/StNum jump.',
-    acceptanceTestCriteria: 'End-to-end trip indication captured in Digital Twin within < 12 ms of simulated relay trip.',
+    acceptanceTestCriteria: 'End-to-end trip indication captured in Digital Image within < 12 ms of simulated relay trip.',
   },
   {
     protocolName: 'IEC 61850-9-2 LE (Sampled Values for Merging Units)',
@@ -202,7 +202,7 @@ export const CONNECTOR_SPECS: ProtocolConnectorSpec[] = [
     profileStandard: 'Ethernet Layer 2 (Ethertype 0x88BA) 4000/4800 samples/sec (80 samples/cycle at 50 Hz)',
     networkSegment: 'Process Bus (VLAN 30: Dedicated 1 Gbps fiber ring, IEEE 1588 PTP synchronized)',
     securityControls: [
-      'Isolated process network; no IP routing; passive optical tap to Digital Twin DSP edge node',
+      'Isolated process network; no IP routing; passive optical tap to Digital Image DSP edge node',
     ],
     failureBehavior: 'Clock sync unlock flag triggers telemetry quality invalid; fallback to SCADA RMS values.',
     acceptanceTestCriteria: 'Phase angle accuracy within 0.1 degree compared to calibrated reference calibrator.',
@@ -214,7 +214,7 @@ export function generateSattenapalliSCL(): string {
 <SCL xmlns="http://www.iec.ch/61850/2003/SCL" version="2007" revision="B" release="4">
   <Header id="SAT4012_SCL" version="1.0" revision="0" toolID="SAT-TWIN-SCL-GEN">
     <History>
-      <Hitem version="1.0" revision="0" when="2026-10-10T00:00:00Z" who="APTRANSCO Digital Twin Project" what="Provisional SCL for Sattenapalli 400/220kV Substation (ID 4012)"/>
+      <Hitem version="1.0" revision="0" when="2026-10-10T00:00:00Z" who="APTRANSCO Digital Image Project" what="Provisional SCL for Sattenapalli 400/220kV Substation (ID 4012)"/>
     </History>
   </Header>
   <Substation name="Sattenapalli_4012" desc="APTRANSCO 400/220 kV Transmission Substation">

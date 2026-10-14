@@ -1,6 +1,6 @@
 /**
  * SAT-TWIN: Navigable 3D Switchyard Scene (Three.js)
- * High-fidelity 3D digital twin rendering of Sattenapalli 400/220 kV switchyard.
+ * High-fidelity 3D digital image rendering of Sattenapalli 400/220 kV switchyard.
  * Features:
  * - 400 kV & 220 kV lattice steel gantries and conductors
  * - 3 x 315 MVA Power Transformers with cooling radiators, fans, conservators, blast walls

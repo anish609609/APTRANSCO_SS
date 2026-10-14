@@ -110,7 +110,7 @@ class AlarmManager {
     this.notify();
   }
 
-  public acknowledgeAlarm(alarmId: string, engineer = 'Shift Engineer (APTRANSCO)', notes = 'Acknowledged in digital twin console') {
+  public acknowledgeAlarm(alarmId: string, engineer = 'Shift Engineer (APTRANSCO)', notes = 'Acknowledged in digital image console') {
     const alarm = this.alarms.find((a) => a.id === alarmId);
     if (!alarm || alarm.status !== 'ACTIVE') return;
 

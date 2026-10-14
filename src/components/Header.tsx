@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 flex flex-wrap items-center justify-between text-xs">
         <div className="flex items-center gap-3">
           <span className="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase">
-            SIMULATION / DIGITAL TWIN MODE
+            SIMULATION / DIGITAL IMAGE MODE
           </span>
           <span className="text-amber-200/90 hidden sm:inline">
             APTRANSCO Sattenapalli Substation (ID 4012) · Telemetry is synthetic physics simulation · Read-Only Mode

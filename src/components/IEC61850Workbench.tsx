@@ -113,7 +113,7 @@ export const IEC61850Workbench: React.FC = () => {
                 <th className="p-3">Logical Node</th>
                 <th className="p-3">Data Object / Attrib</th>
                 <th className="p-3">Description</th>
-                <th className="p-3">Twin Asset</th>
+                <th className="p-3">Image Asset</th>
                 <th className="p-3">Protocol Profile</th>
                 <th className="p-3">Quality Bit Handling</th>
               </tr>
@@ -125,7 +125,7 @@ export const IEC61850Workbench: React.FC = () => {
                   <td className="p-3 text-amber-300 font-bold">{p.logicalNode}</td>
                   <td className="p-3 text-emerald-400">{`${p.dataObject}.${p.dataAttribute}`}</td>
                   <td className="p-3 font-sans text-slate-300">{p.iecDescription}</td>
-                  <td className="p-3 text-white font-bold">{p.digitalTwinAssetId}</td>
+                  <td className="p-3 text-white font-bold">{p.digitalImageAssetId}</td>
                   <td className="p-3">
                     <span className="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-[10px] text-slate-300">
                       {p.protocolProfile}
@@ -208,26 +208,26 @@ export const IEC61850Workbench: React.FC = () => {
           </div>
 
           <p>
-            In accordance with CEA (Central Electricity Authority) Cybersecurity Guidelines for Power Sector and APTRANSCO IT/OT security mandates, the SAT-TWIN Digital Twin platform is strictly partitioned from live protection and tripping circuits:
+            In accordance with CEA (Central Electricity Authority) Cybersecurity Guidelines for Power Sector and APTRANSCO IT/OT security mandates, the SAT-TWIN Digital Image platform is strictly partitioned from live protection and tripping circuits:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2">
               <div className="font-bold text-rose-400 uppercase text-[11px]">ZONE 1: Protection & Control</div>
               <p className="text-[11px] text-slate-400">
-                Direct bay protection relays (Distance, Differential, Breaker Failure). Air-gapped from digital twin. Digital twin cannot issue controls, trip commands, or modify protection settings.
+                Direct bay protection relays (Distance, Differential, Breaker Failure). Air-gapped from digital image. Digital image cannot issue controls, trip commands, or modify protection settings.
               </p>
             </div>
 
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2">
               <div className="font-bold text-amber-400 uppercase text-[11px]">ZONE 2: Substation SAS Gateway</div>
               <p className="text-[11px] text-slate-400">
-                Station bus MMS server. Unidirectional Data Diode / Optical Tap sends telemetry stream to Digital Twin DMZ ingestion node. No incoming TCP packets accepted from external networks.
+                Station bus MMS server. Unidirectional Data Diode / Optical Tap sends telemetry stream to Digital Image DMZ ingestion node. No incoming TCP packets accepted from external networks.
               </p>
             </div>
 
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2">
-              <div className="font-bold text-emerald-400 uppercase text-[11px]">ZONE 3: Digital Twin Server</div>
+              <div className="font-bold text-emerald-400 uppercase text-[11px]">ZONE 3: Digital Image Server</div>
               <p className="text-[11px] text-slate-400">
                 Hosts state estimation, thermal physics model, 3D visualization, and alarm audit logs. Protected by TLS 1.3, strict RBAC, and immutable audit trailing.
               </p>

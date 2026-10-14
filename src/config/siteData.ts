@@ -18,7 +18,7 @@ export const SUBSTATION_INFO = {
     lat: 16.3980,
     lng: 80.1450,
   },
-  operatingMode: 'SIMULATION & DIGITAL TWIN MONITORING',
+  operatingMode: 'SIMULATION & DIGITAL IMAGE MONITORING',
   installedCapacityProvisionalMVA: 945, // 3 x 315 MVA
   voltageClasses: ['400 kV', '220 kV', '33 kV Tertiary'],
   nominalFrequencyHz: 50.0,

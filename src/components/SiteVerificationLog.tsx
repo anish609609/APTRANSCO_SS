@@ -1,6 +1,6 @@
 /**
  * SAT-TWIN: Provisional Site Verification Ledger
- * Tracks every assumption made in the digital twin prototype vs real-world APTRANSCO site facts.
+ * Tracks every assumption made in the digital image prototype vs real-world APTRANSCO site facts.
  * Fulfills Definition of Done section 11 requirements.
  */
 
