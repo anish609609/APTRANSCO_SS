@@ -1,0 +1,6 @@
+{
+  "name": "SAT-TWIN: Sattenapalli 400/220 kV Substation Digital Twin",
+  "description": "Operational digital twin for APTRANSCO Sattenapalli 400/220 kV Transmission Substation featuring interactive 3D switchyard, single-line diagram, real-time telemetry simulator, and asset health monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
